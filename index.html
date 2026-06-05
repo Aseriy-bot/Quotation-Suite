@@ -2516,6 +2516,11 @@
         },
         getAll(store) {
             return new Promise((resolve, reject) => {
+                if (!this._db) {
+                    console.warn('IndexedDB unavailable, falling back to empty data for', store);
+                    resolve([]);
+                    return;
+                }
                 const tx  = this._db.transaction(store, 'readonly');
                 const req = tx.objectStore(store).getAll();
                 req.onsuccess = () => resolve(req.result || []);
@@ -2524,6 +2529,11 @@
         },
         put(store, item) {
             return new Promise((resolve, reject) => {
+                if (!this._db) {
+                    console.warn('IndexedDB unavailable, skipping write for', store, item);
+                    resolve();
+                    return;
+                }
                 const tx  = this._db.transaction(store, 'readwrite');
                 const req = tx.objectStore(store).put(item);
                 req.onsuccess = () => resolve();
@@ -2532,6 +2542,11 @@
         },
         delete(store, id) {
             return new Promise((resolve, reject) => {
+                if (!this._db) {
+                    console.warn('IndexedDB unavailable, skipping delete for', store, id);
+                    resolve();
+                    return;
+                }
                 const tx  = this._db.transaction(store, 'readwrite');
                 const req = tx.objectStore(store).delete(id);
                 req.onsuccess = () => resolve();
@@ -2540,6 +2555,11 @@
         },
         getSettings() {
             return new Promise((resolve, reject) => {
+                if (!this._db) {
+                    console.warn('IndexedDB unavailable, returning default settings fallback');
+                    resolve(null);
+                    return;
+                }
                 const tx  = this._db.transaction('settings', 'readonly');
                 const req = tx.objectStore('settings').get('main');
                 req.onsuccess = () => resolve(req.result || null);
@@ -2548,6 +2568,11 @@
         },
         putSettings(s) {
             return new Promise((resolve, reject) => {
+                if (!this._db) {
+                    console.warn('IndexedDB unavailable, skipping settings write');
+                    resolve();
+                    return;
+                }
                 const tx  = this._db.transaction('settings', 'readwrite');
                 const req = tx.objectStore('settings').put({ key: 'main', ...s });
                 req.onsuccess = () => resolve();
@@ -4370,22 +4395,26 @@
             try { await DB.open(); } catch(e) { console.warn('IndexedDB unavailable, falling back to localStorage', e); }
 
             /* Migrate legacy localStorage data */
-            try { await this.migrateFromLocalStorage(); } catch(e) {}
+            try { await this.migrateFromLocalStorage(); } catch(e) { console.warn('Migration failed', e); }
 
             /* Restore session */
             this.loadUsers();
             this.checkSession();
 
-            /* Load data */
-            await this.loadData();
-            await this.loadPurchaseOrders();
-            await this.loadInvoices();
-            await this.loadDeliveryNotes();
-
-            const loader = document.getElementById('page-loader');
-            if (loader) {
-                loader.classList.add('fade-out');
-                setTimeout(() => loader.remove(), 600);
+            try {
+                /* Load data */
+                await this.loadData();
+                await this.loadPurchaseOrders();
+                await this.loadInvoices();
+                await this.loadDeliveryNotes();
+            } catch (e) {
+                console.warn('Failed to load app data', e);
+            } finally {
+                const loader = document.getElementById('page-loader');
+                if (loader) {
+                    loader.classList.add('fade-out');
+                    setTimeout(() => loader.remove(), 600);
+                }
             }
         }
     }).mount('#app');
