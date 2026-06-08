@@ -2500,7 +2500,7 @@
         _db: null,
         open() {
             return new Promise((resolve, reject) => {
-                const req = indexedDB.open('aset_db', 1);
+                const req = indexedDB.open('aset_db', 2);
                 req.onupgradeneeded = e => {
                     const db = e.target.result;
                     ['quotes','purchase_orders','invoices','delivery_notes'].forEach(s => {
@@ -3258,16 +3258,20 @@
             },
             
             async saveSettings() {
-                await DB.putSettings(this.settings);
-                this.applyThemeVars(this.settings.themeColor, this.settings.accentColor);
                 try {
-                    if (this.settings.loginWallpaper) {
-                        localStorage.setItem('qs_loader_bg', this.settings.loginWallpaper);
-                    } else {
-                        localStorage.removeItem('qs_loader_bg');
-                    }
-                } catch(e) {}
-                this.showToast('Settings saved successfully');
+                    await DB.putSettings(this.settings);
+                    this.applyThemeVars(this.settings.themeColor, this.settings.accentColor);
+                    try {
+                        if (this.settings.loginWallpaper) {
+                            localStorage.setItem('qs_loader_bg', this.settings.loginWallpaper);
+                        } else {
+                            localStorage.removeItem('qs_loader_bg');
+                        }
+                    } catch(e) {}
+                    this.showToast('Settings saved successfully');
+                } catch(e) {
+                    this.showToast('Failed to save settings');
+                }
             },
             
             onLogoSelected(e){
